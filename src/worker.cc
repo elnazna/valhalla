@@ -86,6 +86,7 @@ const std::unordered_map<unsigned, std::string> HTTP_STATUS_CODES{
     {510, "Not Extended"},
 };
 
+// from valhalla error code to http status code
 const std::unordered_map<unsigned, unsigned> ERROR_TO_STATUS{
     {100, 400}, {101, 405}, {106, 404}, {107, 501},
 
@@ -95,7 +96,7 @@ const std::unordered_map<unsigned, unsigned> ERROR_TO_STATUS{
 
     {130, 400}, {131, 400}, {132, 400}, {133, 400}, {136, 400},
 
-    {140, 400}, {141, 501}, {142, 501},
+    {140, 400}, {141, 501}, {142, 501}, {143, 400},
 
     {150, 400}, {151, 400}, {152, 400}, {153, 400}, {154, 400}, {155, 400}, {156, 400}, {157, 400},
     {158, 400}, {159, 400},
@@ -178,6 +179,8 @@ const std::unordered_map<unsigned, std::string> OSRM_ERRORS_CODES{
     {141,
      R"({"code":"InvalidValue","message":"The successfully parsed query parameters are invalid."})"},
     {142,
+     R"({"code":"InvalidValue","message":"The successfully parsed query parameters are invalid."})"},
+    {143,
      R"({"code":"InvalidValue","message":"The successfully parsed query parameters are invalid."})"},
 
     {150,
@@ -319,7 +322,8 @@ void parse_locations(const rapidjson::Document& doc,
                      Options& options,
                      const std::string& node,
                      unsigned location_parse_error_code,
-                     bool track) {
+                     bool track,
+                     const boost::optional<bool>& ignore_closures) {
 
   google::protobuf::RepeatedPtrField<valhalla::Location>* locations = nullptr;
   if (node == "locations") {
@@ -348,21 +352,21 @@ void parse_locations(const rapidjson::Document& doc,
         auto* location = locations->Add();
         location->set_original_index(locations->size() - 1);
 
-        auto lat = rapidjson::get_optional<float>(r_loc, "/lat");
+        auto lat = rapidjson::get_optional<double>(r_loc, "/lat");
         if (!lat) {
           throw std::runtime_error{"lat is missing"};
         };
 
-        if (*lat < -90.0f || *lat > 90.0f) {
+        if (*lat < -90.0 || *lat > 90.0) {
           throw std::runtime_error("Latitude must be in the range [-90, 90] degrees");
         }
 
-        auto lon = rapidjson::get_optional<float>(r_loc, "/lon");
+        auto lon = rapidjson::get_optional<double>(r_loc, "/lon");
         if (!lon) {
           throw std::runtime_error{"lon is missing"};
         };
 
-        lon = midgard::circular_range_clamp<float>(*lon, -180, 180);
+        lon = midgard::circular_range_clamp<double>(*lon, -180, 180);
         location->mutable_ll()->set_lat(*lat);
         location->mutable_ll()->set_lng(*lon);
 
@@ -463,10 +467,10 @@ void parse_locations(const rapidjson::Document& doc,
         if (preferred_side && PreferredSide_Enum_Parse(*preferred_side, &side)) {
           location->set_preferred_side(side);
         }
-        lat = rapidjson::get_optional<float>(r_loc, "/display_lat");
-        lon = rapidjson::get_optional<float>(r_loc, "/display_lon");
-        if (lat && lon && *lat >= -90.0f && *lat <= 90.0f) {
-          lon = midgard::circular_range_clamp<float>(*lon, -180, 180);
+        lat = rapidjson::get_optional<double>(r_loc, "/display_lat");
+        lon = rapidjson::get_optional<double>(r_loc, "/display_lon");
+        if (lat && lon && *lat >= -90.0 && *lat <= 90.0) {
+          lon = midgard::circular_range_clamp<double>(*lon, -180, 180);
           location->mutable_display_ll()->set_lat(*lat);
           location->mutable_display_ll()->set_lng(*lon);
         }
@@ -510,12 +514,19 @@ void parse_locations(const rapidjson::Document& doc,
           location->mutable_search_filter()->set_exclude_ramp(
               rapidjson::get_optional<bool>(*search_filter, "/exclude_ramp").get_value_or(false));
           // search_filter.exclude_closures
-          bool exclude_closures =
-              rapidjson::get_optional<bool>(*search_filter, "/exclude_closures").get_value_or(true);
-          location->mutable_search_filter()->set_exclude_closures(exclude_closures);
+          auto exclude_closures = rapidjson::get_optional<bool>(*search_filter, "/exclude_closures");
+          // bail if you specified both of these, too confusing to work out how to use both at once
+          if (ignore_closures && exclude_closures) {
+            // TODO:
+            throw valhalla_exception_t{143};
+          }
+          // do we actually want to filter closures on THIS location
+          // NOTE: that ignore_closures takes precedence
+          location->mutable_search_filter()->set_exclude_closures(
+              ignore_closures ? !*ignore_closures : (exclude_closures ? *exclude_closures : true));
           // set exclude_closures_disabled if any of the locations has the
           // search_filter.exclude_closures set as false
-          if (!exclude_closures) {
+          if (!location->exclude_closures()) {
             exclude_closures_disabled = true;
           }
         }
@@ -705,6 +716,42 @@ void from_json(rapidjson::Document& doc, Options& options) {
     options.set_linear_references(*linear_references);
   }
 
+  // costing defaults to none which is only valid for locate
+  auto costing_str = rapidjson::get<std::string>(doc, "/costing", "none");
+
+  // auto_shorter is deprecated and will be turned into
+  // shortest=true costing option. maybe remove in v4?
+  if (costing_str == "auto_shorter") {
+    costing_str = "auto";
+    rapidjson::SetValueByPointer(doc, "/costing", "auto");
+    auto json_options = rapidjson::GetValueByPointer(doc, "/costing_options/auto_shorter");
+    if (json_options) {
+      rapidjson::SetValueByPointer(doc, "/costing_options/auto", *json_options);
+    }
+    rapidjson::SetValueByPointer(doc, "/costing_options/auto/shortest", true);
+  }
+
+  // auto_data_fix is deprecated and will be turned into
+  // ignore all the things costing option. maybe remove in v4?
+  if (costing_str == "auto_data_fix") {
+    costing_str = "auto";
+    rapidjson::SetValueByPointer(doc, "/costing", "auto");
+    auto json_options = rapidjson::GetValueByPointer(doc, "/costing_options/auto_data_fix");
+    if (json_options) {
+      rapidjson::SetValueByPointer(doc, "/costing_options/auto", *json_options);
+    }
+    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_restrictions", true);
+    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_oneways", true);
+    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_access", true);
+    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_closures", true);
+  }
+
+  // whatever our costing is, check to see if we are going to ignore_closures
+  auto ignore_closures =
+      costing_str != "multimodal"
+          ? rapidjson::get_optional<bool>(doc, "/costing_options/" + costing_str + "/ignore_closures")
+          : boost::none;
+
   // parse map matching location input and encoded_polyline for height actions
   auto encoded_polyline = rapidjson::get_optional<std::string>(doc, "/encoded_polyline");
   if (encoded_polyline) {
@@ -735,11 +782,11 @@ void from_json(rapidjson::Document& doc, Options& options) {
     add_date_to_locations(options, *options.mutable_shape());
   } // fall back from encoded polyline to array of locations
   else {
-    parse_locations(doc, options, "shape", 134, false);
+    parse_locations(doc, options, "shape", 134, false, ignore_closures);
 
     // if no shape then try 'trace'
     if (options.shape().size() == 0) {
-      parse_locations(doc, options, "trace", 135, false);
+      parse_locations(doc, options, "trace", 135, false, ignore_closures);
     }
   }
 
@@ -805,36 +852,6 @@ void from_json(rapidjson::Document& doc, Options& options) {
 
   options.set_verbose(rapidjson::get(doc, "/verbose", false));
 
-  // costing defaults to none which is only valid for locate
-  auto costing_str = rapidjson::get<std::string>(doc, "/costing", "none");
-
-  // auto_shorter is deprecated and will be turned into
-  // shortest=true costing option. maybe remove in v4?
-  if (costing_str == "auto_shorter") {
-    costing_str = "auto";
-    rapidjson::SetValueByPointer(doc, "/costing", "auto");
-    auto json_options = rapidjson::GetValueByPointer(doc, "/costing_options/auto_shorter");
-    if (json_options) {
-      rapidjson::SetValueByPointer(doc, "/costing_options/auto", *json_options);
-    }
-    rapidjson::SetValueByPointer(doc, "/costing_options/auto/shortest", true);
-  }
-
-  // auto_data_fix is deprecated and will be turned into
-  // ignore all the things costing option. maybe remove in v4?
-  if (costing_str == "auto_data_fix") {
-    costing_str = "auto";
-    rapidjson::SetValueByPointer(doc, "/costing", "auto");
-    auto json_options = rapidjson::GetValueByPointer(doc, "/costing_options/auto_data_fix");
-    if (json_options) {
-      rapidjson::SetValueByPointer(doc, "/costing_options/auto", *json_options);
-    }
-    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_restrictions", true);
-    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_oneways", true);
-    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_access", true);
-    rapidjson::SetValueByPointer(doc, "/costing_options/auto/ignore_closures", true);
-  }
-
   // try the string directly, some strings are keywords so add an underscore
   Costing costing;
   if (valhalla::Costing_Enum_Parse(costing_str, &costing)) {
@@ -861,16 +878,16 @@ void from_json(rapidjson::Document& doc, Options& options) {
   }
 
   // get the locations in there
-  parse_locations(doc, options, "locations", 130, track);
+  parse_locations(doc, options, "locations", 130, track, ignore_closures);
 
   // get the sources in there
-  parse_locations(doc, options, "sources", 131, track);
+  parse_locations(doc, options, "sources", 131, track, ignore_closures);
 
   // get the targets in there
-  parse_locations(doc, options, "targets", 132, track);
+  parse_locations(doc, options, "targets", 132, track, ignore_closures);
 
   // get the avoids in there
-  parse_locations(doc, options, "avoid_locations", 133, track);
+  parse_locations(doc, options, "avoid_locations", 133, track, ignore_closures);
 
   // if not a time dependent route/mapmatch disable time dependent edge speed/flow data sources
   if (!options.has_date_time_type() && (options.shape_size() == 0 || options.shape(0).time() == -1)) {

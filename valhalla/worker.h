@@ -48,6 +48,7 @@ const std::unordered_map<unsigned, std::string>
                 {140, "Action does not support multimodal costing"},
                 {141, "Arrive by for multimodal not implemented yet"},
                 {142, "Arrive by not implemented for isochrones"},
+                {143, "Location exclude_closures filter cannot be used with costing ignore_closures"},
 
                 {150, "Exceeded max locations"},
                 {151, "Exceeded max time"},
