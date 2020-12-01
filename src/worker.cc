@@ -517,19 +517,23 @@ void parse_locations(const rapidjson::Document& doc,
           auto exclude_closures = rapidjson::get_optional<bool>(*search_filter, "/exclude_closures");
           // bail if you specified both of these, too confusing to work out how to use both at once
           if (ignore_closures && exclude_closures) {
-            // TODO:
             throw valhalla_exception_t{143};
           }
           // do we actually want to filter closures on THIS location
           // NOTE: that ignore_closures takes precedence
           location->mutable_search_filter()->set_exclude_closures(
-              ignore_closures ? !*ignore_closures : (exclude_closures ? *exclude_closures : true));
+              ignore_closures ? !(*ignore_closures) : (exclude_closures ? *exclude_closures : true));
           // set exclude_closures_disabled if any of the locations has the
           // search_filter.exclude_closures set as false
-          if (!location->exclude_closures()) {
+          if (!location->search_filter().exclude_closures()) {
             exclude_closures_disabled = true;
           }
         }
+      }
+      // Forward valhalla_exception_t types as-is, since they contain a more
+      // specific error message
+      catch (const valhalla_exception_t& e) {
+        throw e;
       } catch (...) { throw valhalla_exception_t{location_parse_error_code}; }
     }
 
@@ -747,10 +751,11 @@ void from_json(rapidjson::Document& doc, Options& options) {
   }
 
   // whatever our costing is, check to see if we are going to ignore_closures
-  auto ignore_closures =
-      costing_str != "multimodal"
-          ? rapidjson::get_optional<bool>(doc, "/costing_options/" + costing_str + "/ignore_closures")
-          : boost::none;
+  std::stringstream ss;
+  ss << "/costing_options/" << costing_str << "/ignore_closures";
+  auto ignore_closures = costing_str != "multimodal"
+                             ? rapidjson::get_optional<bool>(doc, ss.str().c_str())
+                             : boost::none;
 
   // parse map matching location input and encoded_polyline for height actions
   auto encoded_polyline = rapidjson::get_optional<std::string>(doc, "/encoded_polyline");

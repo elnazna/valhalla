@@ -39,7 +39,7 @@ bool is_search_filter_triggered(const DirectedEdge* edge,
       (search_filter.exclude_tunnel_ && edge->tunnel()) ||
       (search_filter.exclude_bridge_ && edge->bridge()) ||
       (search_filter.exclude_ramp_ && (edge->use() == Use::kRamp)) ||
-      (search_filter.exclude_closures_ && !costing.Filter(edge, tile))) {
+      (search_filter.exclude_closures_ && costing.IsClosed(edge, tile))) {
     return true;
   }
 
