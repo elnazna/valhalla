@@ -84,7 +84,7 @@ protected:
                                  const baldr::NodeInfo* nodeinfo,
                                  const uint32_t pred_idx,
                                  const EdgeMetadata& meta,
-                                 const baldr::GraphTile* tile,
+                                 std::shared_ptr<const baldr::GraphTile> tile,
                                  const baldr::TimeInfo& time_info,
                                  const valhalla::Location& destination,
                                  std::pair<int32_t, float>& best_path);
@@ -189,7 +189,7 @@ protected:
                           const baldr::NodeInfo* nodeinfo,
                           const uint32_t pred_idx,
                           const EdgeMetadata& meta,
-                          const baldr::GraphTile* tile,
+                          std::shared_ptr<const baldr::GraphTile> tile,
                           const baldr::TimeInfo& time_info,
                           const valhalla::Location& destination,
                           std::pair<int32_t, float>& best_path);

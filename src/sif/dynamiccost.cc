@@ -80,7 +80,8 @@ bool DynamicCost::AllowMultiPass() const {
 // using them for the current route. Here we just call out to the derived classes costing function
 // with a time that tells the function that we aren't using time. This avoids having to worry about
 // default parameters and inheritance (which are a bad mix)
-Cost DynamicCost::EdgeCost(const baldr::DirectedEdge* edge, const baldr::GraphTile* tile) const {
+Cost DynamicCost::EdgeCost(const baldr::DirectedEdge* edge,
+                           std::shared_ptr<const baldr::GraphTile> tile) const {
   return EdgeCost(edge, tile, kConstrainedFlowSecondOfDay);
 }
 
@@ -187,16 +188,18 @@ bool DynamicCost::bicycle() const {
 }
 
 // Add to the exclude list.
-void DynamicCost::AddToExcludeList(const baldr::GraphTile*&) {
+void DynamicCost::AddToExcludeList(std::shared_ptr<const baldr::GraphTile>& tile) {
 }
 
 // Checks if we should exclude or not.
-bool DynamicCost::IsExcluded(const baldr::GraphTile*&, const baldr::DirectedEdge*) {
+bool DynamicCost::IsExcluded(std::shared_ptr<const baldr::GraphTile>& tile,
+                             const baldr::DirectedEdge* edge) {
   return false;
 }
 
 // Checks if we should exclude or not.
-bool DynamicCost::IsExcluded(const baldr::GraphTile*&, const baldr::NodeInfo*) {
+bool DynamicCost::IsExcluded(std::shared_ptr<const baldr::GraphTile>& tile,
+                             const baldr::NodeInfo* node) {
   return false;
 }
 

@@ -141,7 +141,7 @@ void UpdateIncident(const std::shared_ptr<const valhalla::IncidentsTile>& incide
  * @param incidents
  */
 void SetShapeAttributes(const AttributesController& controller,
-                        const GraphTile* tile,
+                        std::shared_ptr<const GraphTile> tile,
                         const DirectedEdge* edge,
                         std::vector<PointLL>& shape,
                         size_t shape_begin,
@@ -422,11 +422,11 @@ TripLeg_Edge* AddTripEdge(const AttributesController& controller,
                           const DirectedEdge* directededge,
                           const bool drive_on_right,
                           TripLeg_Node* trip_node,
-                          const GraphTile* graphtile,
+                          std::shared_ptr<const GraphTile> graphtile,
                           const uint32_t second_of_week,
                           const uint32_t start_node_idx,
                           const bool has_junction_name,
-                          const GraphTile* start_tile,
+                          std::shared_ptr<const GraphTile> start_tile,
                           const int restrictions_idx) {
 
   // Index of the directed edge within the tile
@@ -1039,7 +1039,7 @@ void TripLegBuilder::Build(
   // opposing edge then use the opposing index to get the opposing edge, and its end node is the
   // begin node of the original edge
   auto* first_edge = graphreader.GetGraphTile(path_begin->edgeid)->directededge(path_begin->edgeid);
-  auto* first_tile = graphreader.GetGraphTile(first_edge->endnode());
+  auto first_tile = graphreader.GetGraphTile(first_edge->endnode());
   auto* first_node = first_tile->node(first_edge->endnode());
   GraphId startnode =
       first_tile->directededge(first_node->edge_index() + first_edge->opp_index())->endnode();
@@ -1102,7 +1102,7 @@ void TripLegBuilder::Build(
   uint64_t osmchangeset = 0;
   size_t edge_index = 0;
   const DirectedEdge* prev_de = nullptr;
-  const GraphTile* graphtile = nullptr;
+  std::shared_ptr<const GraphTile> graphtile = nullptr;
   MultimodalBuilder multimodal_builder(origin, time_info);
 
   for (auto edge_itr = path_begin; edge_itr != path_end; ++edge_itr, ++edge_index) {
@@ -1114,7 +1114,7 @@ void TripLegBuilder::Build(
     const auto& costing = mode_costing[static_cast<uint32_t>(mode)];
 
     // Set node attributes - only set if they are true since they are optional
-    const GraphTile* start_tile = graphtile;
+    std::shared_ptr<const GraphTile> start_tile = graphtile;
     start_tile = graphreader.GetGraphTile(startnode, start_tile);
     const NodeInfo* node = start_tile->node(startnode);
 
@@ -1329,7 +1329,7 @@ void TripLegBuilder::Build(
 
     // Save the opposing edge as the previous DirectedEdge (for name consistency)
     if (!directededge->IsTransitLine()) {
-      const GraphTile* t2 =
+      std::shared_ptr<const GraphTile> t2 =
           directededge->leaves_tile() ? graphreader.GetGraphTile(directededge->endnode()) : graphtile;
       if (t2 == nullptr) {
         continue;
@@ -1345,7 +1345,7 @@ void TripLegBuilder::Build(
   // Add the last node
   auto* node = trip_path.add_node();
   if (controller.attributes.at(kNodeAdminIndex)) {
-    auto* last_tile = graphreader.GetGraphTile(startnode);
+    auto last_tile = graphreader.GetGraphTile(startnode);
     node->set_admin_index(
         GetAdminIndex(last_tile->admininfo(last_tile->node(startnode)->admin_index()), admin_info_map,
                       admin_info_list));

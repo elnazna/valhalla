@@ -136,7 +136,9 @@ struct TestGraphTile : public GraphTile {
   }
 };
 
-static void CheckGraphTile(const GraphTile* tile, const GraphId& expected_id, size_t expected_size) {
+static void CheckGraphTile(std::shared_ptr<const GraphTile> tile,
+                           const GraphId& expected_id,
+                           size_t expected_size) {
   ASSERT_NE(tile, nullptr);
   EXPECT_EQ(tile->header()->graphid().value, expected_id.value);
   EXPECT_EQ(tile->header()->end_offset(), expected_size);
@@ -147,21 +149,21 @@ TEST(SimpleCache, Clear) {
 
   GraphId id1(100, 2, 0);
   TestGraphTile tile1(id1, 123);
-  const GraphTile* inserted1 = cache.Put(id1, tile1, 123);
+  std::shared_ptr<const GraphTile> inserted1 = cache.Put(id1, tile1, 123);
   CheckGraphTile(inserted1, id1, 123);
 
   EXPECT_FALSE(cache.OverCommitted());
 
   GraphId id2(300, 1, 0);
   TestGraphTile tile2(id2, 200);
-  const GraphTile* inserted2 = cache.Put(id2, tile2, 200);
+  std::shared_ptr<const GraphTile> inserted2 = cache.Put(id2, tile2, 200);
   CheckGraphTile(inserted2, id2, 200);
 
   EXPECT_FALSE(cache.OverCommitted());
 
   GraphId id3(1000, 0, 0);
   TestGraphTile tile3(id3, 500);
-  const GraphTile* inserted3 = cache.Put(id3, tile3, 500);
+  std::shared_ptr<const GraphTile> inserted3 = cache.Put(id3, tile3, 500);
   CheckGraphTile(inserted3, id3, 500);
 
   EXPECT_TRUE(cache.OverCommitted());
@@ -197,21 +199,21 @@ TEST(SimpleCache, Trim) {
 
   GraphId id1(100, 2, 0);
   TestGraphTile tile1(id1, 123);
-  const GraphTile* inserted1 = cache.Put(id1, tile1, 123);
+  std::shared_ptr<const GraphTile> inserted1 = cache.Put(id1, tile1, 123);
   CheckGraphTile(inserted1, id1, 123);
 
   EXPECT_FALSE(cache.OverCommitted());
 
   GraphId id2(300, 1, 0);
   TestGraphTile tile2(id2, 200);
-  const GraphTile* inserted2 = cache.Put(id2, tile2, 200);
+  std::shared_ptr<const GraphTile> inserted2 = cache.Put(id2, tile2, 200);
   CheckGraphTile(inserted2, id2, 200);
 
   EXPECT_FALSE(cache.OverCommitted());
 
   GraphId id3(1000, 0, 0);
   TestGraphTile tile3(id3, 500);
-  const GraphTile* inserted3 = cache.Put(id3, tile3, 500);
+  std::shared_ptr<const GraphTile> inserted3 = cache.Put(id3, tile3, 500);
   CheckGraphTile(inserted3, id3, 500);
 
   EXPECT_TRUE(cache.OverCommitted());
@@ -304,17 +306,17 @@ TEST(CacheLruHard, InsertNoEviction) {
 
   GraphId id1(100, 2, 0);
   TestGraphTile tile1(id1, 123);
-  const GraphTile* inserted1 = cache.Put(id1, tile1, 123);
+  std::shared_ptr<const GraphTile> inserted1 = cache.Put(id1, tile1, 123);
   CheckGraphTile(inserted1, id1, 123);
 
   GraphId id2(300, 1, 0);
   TestGraphTile tile2(id2, 200);
-  const GraphTile* inserted2 = cache.Put(id2, tile2, 200);
+  std::shared_ptr<const GraphTile> inserted2 = cache.Put(id2, tile2, 200);
   CheckGraphTile(inserted2, id2, 200);
 
   GraphId id3(1000, 0, 0);
   TestGraphTile tile3(id3, 500);
-  const GraphTile* inserted3 = cache.Put(id3, tile3, 500);
+  std::shared_ptr<const GraphTile> inserted3 = cache.Put(id3, tile3, 500);
   CheckGraphTile(inserted3, id3, 500);
 
   // Check if inserted values are correct

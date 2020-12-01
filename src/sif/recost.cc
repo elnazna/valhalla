@@ -41,7 +41,7 @@ void recost_forward(baldr::GraphReader& reader,
   }
 
   // fetch the graph objects
-  const baldr::GraphTile* tile = nullptr;
+  std::shared_ptr<const baldr::GraphTile> tile = nullptr;
   const baldr::DirectedEdge* edge = reader.directededge(edge_id, tile);
   const baldr::NodeInfo* node = edge ? reader.nodeinfo(edge->endnode(), tile) : nullptr;
 
