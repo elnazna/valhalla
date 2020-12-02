@@ -116,7 +116,7 @@ void AStarPathAlgorithm::ExpandForward(GraphReader& graphreader,
                                        std::pair<int32_t, float>& best_path) {
   // Get the tile and the node info. Skip if tile is null (can happen
   // with regional data sets) or if no access at the node.
-  const GraphTile* tile = graphreader.GetGraphTile(node);
+  std::shared_ptr<const GraphTile> tile = graphreader.GetGraphTile(node);
   if (tile == nullptr) {
     return;
   }
@@ -210,7 +210,7 @@ void AStarPathAlgorithm::ExpandForward(GraphReader& graphreader,
     float dist = 0.0f;
     float sortcost = newcost.cost;
     if (p == destinations_percent_along_.end()) {
-      const GraphTile* t2 =
+      std::shared_ptr<const GraphTile> t2 =
           directededge->leaves_tile() ? graphreader.GetGraphTile(directededge->endnode()) : tile;
       if (t2 == nullptr) {
         continue;
@@ -386,12 +386,12 @@ void AStarPathAlgorithm::SetOrigin(GraphReader& graphreader,
     }
 
     // Get the directed edge
-    const GraphTile* tile = graphreader.GetGraphTile(edgeid);
+    std::shared_ptr<const GraphTile> tile = graphreader.GetGraphTile(edgeid);
     const DirectedEdge* directededge = tile->directededge(edgeid);
 
     // Get the tile at the end node. Skip if tile not found as we won't be
     // able to expand from this origin edge.
-    const GraphTile* endtile = graphreader.GetGraphTile(directededge->endnode());
+    std::shared_ptr<const GraphTile> endtile = graphreader.GetGraphTile(directededge->endnode());
     if (endtile == nullptr) {
       continue;
     }
@@ -489,7 +489,7 @@ uint32_t AStarPathAlgorithm::SetDestination(GraphReader& graphreader,
     // Edge score (penalty) is handled within GetPath. Do not add score here.
 
     // Get the tile relative density
-    const GraphTile* tile = graphreader.GetGraphTile(edgeid);
+    std::shared_ptr<const GraphTile> tile = graphreader.GetGraphTile(edgeid);
     density = tile->header()->density();
   }
   return density;

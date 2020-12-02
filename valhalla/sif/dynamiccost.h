@@ -140,7 +140,7 @@ public:
    */
   virtual bool Allowed(const baldr::DirectedEdge* edge,
                        const EdgeLabel& pred,
-                       const baldr::GraphTile* tile,
+                       std::shared_ptr<const baldr::GraphTile> tile,
                        const baldr::GraphId& edgeid,
                        const uint64_t current_time,
                        const uint32_t tz_index,
@@ -167,7 +167,7 @@ public:
   virtual bool AllowedReverse(const baldr::DirectedEdge* edge,
                               const EdgeLabel& pred,
                               const baldr::DirectedEdge* opp_edge,
-                              const baldr::GraphTile* tile,
+                              std::shared_ptr<const baldr::GraphTile> tile,
                               const baldr::GraphId& opp_edgeid,
                               const uint64_t current_time,
                               const uint32_t tz_index,
@@ -224,7 +224,7 @@ public:
    * @return  Returns the cost and time (seconds).
    */
   virtual Cost EdgeCost(const baldr::DirectedEdge* edge,
-                        const baldr::GraphTile* tile,
+                        std::shared_ptr<const baldr::GraphTile> tile,
                         const uint32_t seconds) const = 0;
 
   /**
@@ -234,7 +234,8 @@ public:
    * @param   tile    Pointer to the tile which contains the directed edge for speed lookup
    * @return  Returns the cost and time (seconds).
    */
-  virtual Cost EdgeCost(const baldr::DirectedEdge* edge, const baldr::GraphTile* tile) const;
+  virtual Cost EdgeCost(const baldr::DirectedEdge* edge,
+                        std::shared_ptr<const baldr::GraphTile> tile) const;
 
   /**
    * Returns the cost to make the transition from the predecessor edge.
@@ -288,7 +289,7 @@ public:
   bool Restricted(const baldr::DirectedEdge* edge,
                   const EdgeLabel& pred,
                   const edge_labels_container_t& edge_labels,
-                  const baldr::GraphTile*& tile,
+                  std::shared_ptr<const baldr::GraphTile>& tile,
                   const baldr::GraphId& edgeid,
                   const bool forward,
                   thor::EdgeStatus* edgestatus = nullptr,
@@ -436,7 +437,7 @@ public:
 
   inline bool EvaluateRestrictions(uint32_t access_mode,
                                    const baldr::DirectedEdge* edge,
-                                   const baldr::GraphTile*& tile,
+                                   std::shared_ptr<const baldr::GraphTile>& tile,
                                    const baldr::GraphId& edgeid,
                                    const uint64_t current_time,
                                    const uint32_t tz_index,
@@ -581,7 +582,8 @@ public:
    * edges attribution and suitability for use as a location by the travel
    * mode used by the costing method.
    */
-  virtual float Filter(const baldr::DirectedEdge* edge, const baldr::GraphTile* tile) const = 0;
+  virtual float Filter(const baldr::DirectedEdge* edge,
+                       std::shared_ptr<const baldr::GraphTile> tile) const = 0;
 
   /**
    * Gets the hierarchy limits.
@@ -597,19 +599,20 @@ public:
   /**
    * Checks if we should exclude or not.
    */
-  virtual void AddToExcludeList(const baldr::GraphTile*& tile);
+  virtual void AddToExcludeList(std::shared_ptr<const baldr::GraphTile>& tile);
 
   /**
    * Checks if we should exclude or not.
    * @return  Returns true if we should exclude, false if not.
    */
-  virtual bool IsExcluded(const baldr::GraphTile*& tile, const baldr::DirectedEdge* edge);
+  virtual bool IsExcluded(std::shared_ptr<const baldr::GraphTile>& tile,
+                          const baldr::DirectedEdge* edge);
 
   /**
    * Checks if we should exclude or not.
    * @return  Returns true if we should exclude, false if not.
    */
-  virtual bool IsExcluded(const baldr::GraphTile*& tile, const baldr::NodeInfo* node);
+  virtual bool IsExcluded(std::shared_ptr<const baldr::GraphTile>& tile, const baldr::NodeInfo* node);
 
   /**
    * Adds a list of edges (GraphIds) to the user specified avoid list.
@@ -908,7 +911,8 @@ protected:
    * @param  edgeid         GraphId of the opposing edge.
    * @return  Returns true if the edge is closed due to live traffic constraints, false if not.
    */
-  inline virtual bool IsClosed(const baldr::DirectedEdge* edge, const baldr::GraphTile* tile) const {
+  inline virtual bool IsClosed(const baldr::DirectedEdge* edge,
+                               std::shared_ptr<const baldr::GraphTile> tile) const {
     return !ignore_closures_ && (flow_mask_ & baldr::kCurrentFlowMask) && tile->IsClosed(edge);
   }
 };

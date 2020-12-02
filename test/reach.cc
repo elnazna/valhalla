@@ -60,7 +60,7 @@ boost::property_tree::ptree get_conf() {
 
 GraphId begin_node(GraphReader& reader, const DirectedEdge* edge) {
   // grab the node
-  const auto* tile = reader.GetGraphTile(edge->endnode());
+  auto tile = reader.GetGraphTile(edge->endnode());
   const auto* node = tile->node(edge->endnode());
   // grab the opp edges end node
   const auto* opp_edge = tile->directededge(node->edge_index() + edge->opp_index());
@@ -77,7 +77,7 @@ TEST(Reach, check_all_reach) {
 
   // look at all the edges
   for (auto tile_id : reader.GetTileSet()) {
-    const auto* tile = reader.GetGraphTile(tile_id);
+    auto tile = reader.GetGraphTile(tile_id);
     // loop over edges
     for (GraphId edge_id = tile->header()->graphid();
          edge_id.id() < tile->header()->directededgecount(); ++edge_id) {

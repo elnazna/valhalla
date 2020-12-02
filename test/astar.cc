@@ -256,7 +256,7 @@ std::unique_ptr<vb::GraphReader> get_graph_reader(const std::string& tile_dir) {
     throw std::logic_error("test-tiles does not contain expected number of edges");
   }
 
-  const GraphTile* endtile = reader->GetGraphTile(node_locations["b"]);
+  std::shared_ptr<const GraphTile> endtile = reader->GetGraphTile(node_locations["b"]);
   EXPECT_NE(endtile, nullptr) << "bad tile, node 'b' wasn't found in it";
 
   return reader;

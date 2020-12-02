@@ -29,7 +29,7 @@ TEST(EdgeStatus, TestStatus) {
   test_tile tt;
   tt.header_ = &header;
 
-  const GraphTile* tile = &tt;
+  std::shared_ptr<const GraphTile> tile = &tt;
 
   // Add some edges
   edgestatus.Set(GraphId(555, 1, 100100), EdgeSet::kPermanent, 1, tile);
